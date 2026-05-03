@@ -2,6 +2,10 @@ import { getAll, getFirst, run, withTransaction } from '@/db/client';
 import type { NewSession, Session, SessionExercise } from '@/db/types';
 
 export type SessionExerciseWithName = SessionExercise & { exercise_name: string };
+export type SessionHistoryItem = Session & {
+  exercise_count: number;
+  total_sets: number;
+};
 
 export const sessionRepo = {
   create(input: NewSession): Session {
@@ -26,6 +30,22 @@ export const sessionRepo = {
   },
   list(): Session[] {
     return getAll<Session>('SELECT * FROM sessions ORDER BY started_at DESC;');
+  },
+  listWithStats(): SessionHistoryItem[] {
+    return getAll<SessionHistoryItem>(
+      `SELECT
+        s.*,
+        COUNT(DISTINCT se.id) as exercise_count,
+        COUNT(st.id) as total_sets
+      FROM sessions s
+      LEFT JOIN session_exercises se ON se.session_id = s.id
+      LEFT JOIN sets st ON st.session_exercise_id = se.id
+      GROUP BY s.id
+      ORDER BY s.started_at DESC;`,
+    );
+  },
+  endSession(id: string): void {
+    run('UPDATE sessions SET ended_at = ? WHERE id = ? AND ended_at IS NULL;', [new Date().toISOString(), id]);
   },
   attachExercise(sessionExercise: SessionExercise): void {
     run('INSERT INTO session_exercises (id, session_id, exercise_id, order_index) VALUES (?, ?, ?, ?);', [
