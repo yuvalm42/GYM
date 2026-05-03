@@ -1,10 +1,10 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { initDb } from '@/db/client';
+import { migrate } from '@/db/migrate';
 
 export default function RootLayout() {
   useEffect(() => {
-    initDb();
+    migrate();
   }, []);
 
   return <Stack screenOptions={{ headerShown: false }} />;
